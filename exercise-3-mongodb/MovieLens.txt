@@ -1,0 +1,452 @@
+# Check datasets in MongoDB
+> use movielens;
+> db.movies.find().limit(1).pretty()
+{
+	"_id" : 1,
+	"title" : "Toy Story (1995)",
+	"genres" : "Animation|Children's|Comedy"
+}
+> db.users.find().limit(1).pretty()
+{
+	"_id" : 100,
+	"name" : "Ivan Heriberto",
+	"gender" : "M",
+	"age" : 41,
+	"occupation" : "technician/engineer",
+	"movies" : [
+		{
+			"movieid" : 648,
+			"rating" : 2,
+			"timestamp" : 977594265
+		}
+    ]
+}
+
+# Question 1
+> db.users.count()
+6040
+
+# Question 2
+> db.movies.count()
+3883
+
+# Question 3
+> db.users.find({"name": "Clifford Johnathan"}, {"name": true, "occupation": true, "_id": false})
+{ "name" : "Clifford Johnathan", "occupation" : "technician/engineer" }
+
+# Question 4
+> db.users.find({"age": {$gte: 18, $lte: 30}}).count()
+2365
+
+# Question 5
+> db.users.find({"occupation": {$in: ["artist", "scientist"]}}).count()
+411
+
+# Question 6
+> db.users.find({"gender": "F", "occupation": "writer"}, {"movies": false}).sort({"age": -1}).limit(1)
+{ "_id" : 4187, "name" : "Kasha Glen", "gender" : "F", "age" : 76, "occupation" : "writer" }
+
+# Question 7
+> db.users.distinct("occupation")
+[
+	"doctor/health care",
+	"other",
+	"academic/educator",
+	"scientist",
+	"sales/marketing",
+	"retired",
+	"executive/managerial",
+	"technician/engineer",
+	"college/grad student",
+	"programmer",
+	"self-employed",
+	"homemaker",
+	"writer",
+	"customer service",
+	"K-12 student",
+	"clerical/admi",
+	"lawyer",
+	"artist",
+	"unemployed",
+	"tradesman/craftsman",
+	"farmer"
+]
+
+# Question 8
+> db.users.insert({ "name" : "Wu Zheng", "gender" : "M", "age" : 21, "occupation" : "technician/engineer" })
+WriteResult({ "nInserted" : 1 })
+> db.users.find({ "name": "Wu Zheng" }).pretty()
+{
+	"_id" : ObjectId("59492a486197b0b6c882643a"),
+	"name" : "Wu Zheng",
+	"gender" : "M",
+	"age" : 21,
+	"occupation" : "technician/engineer"
+}
+
+# Question 9
+> db.users.update({ "name": "Wu Zheng" }, {$set: { "movies": [ { "movieid": 1, "rating": 4, "timestamp": Math.round(new Date().getTime() / 1000) } ] }})
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+> db.users.find({"name": "Wu Zheng"}).pretty()
+{
+	"_id" : ObjectId("59492a486197b0b6c882643a"),
+	"name" : "Wu Zheng",
+	"gender" : "M",
+	"age" : 21,
+	"occupation" : "technician/engineer",
+	"movies" : [
+		{
+			"movieid" : 1,
+			"rating" : 4,
+			"timestamp" : 1497967461
+		}
+	]
+}
+
+# Question 10
+> db.users.remove({ "name": "Wu Zheng" })
+WriteResult({ "nRemoved" : 1 })
+
+# Question 11
+> db.users.update({ "occupation": "programmer" }, {$set: {"occupation": "developer"} }, false, true)
+WriteResult({ "nMatched" : 388, "nUpserted" : 0, "nModified" : 388 })
+> db.users.distinct("occupation")
+[
+	"doctor/health care",
+	"other",
+	"academic/educator",
+	"scientist",
+	"sales/marketing",
+	"retired",
+	"executive/managerial",
+	"technician/engineer",
+	"college/grad student",
+	"developer",
+	"self-employed",
+	"homemaker",
+	"writer",
+	"customer service",
+	"K-12 student",
+	"clerical/admi",
+	"lawyer",
+	"artist",
+	"unemployed",
+	"tradesman/craftsman",
+	"farmer"
+]
+
+# Question 12
+var movie_year_handler = function (entry) {
+    if (entry.hasOwnProperty("title")) {
+        var movie_title = entry.title;
+        var movie_title_arr = movie_title.match(/(.*) \((\d+)\)/);
+        if (movie_title_arr !== null && movie_title_arr.length === 3) {
+            entry.title = movie_title_arr[1];
+            entry.year = parseInt(movie_title_arr[2]);
+            db.movies.save(entry);
+        }
+    }
+};
+> db.movies.find().forEach(movie_year_handler);
+
+# Question 13
+var movie_genres_handler = function (entry) {
+    if (entry.hasOwnProperty("genres")) {
+        var movie_genres = entry.genres;
+        var movie_genres_arr = movie_genres.split("|");
+        if (movie_genres_arr.length !== 0) {
+            entry.genres = movie_genres_arr;
+            db.movies.save(entry);
+        }
+    }
+};
+> db.movies.find().forEach(movie_genres_handler);
+
+# Question 14
+var user_timestamp_handler = function (entry) {
+    if (entry.hasOwnProperty("movies")) {
+        var user_movies = entry.movies;
+        var new_user_movies = [];
+        for (var i = 0; i < user_movies.length; i++) {
+            var user_movie = user_movies[i];
+            var timestamp = user_movie["timestamp"];
+            if (timestamp instanceof Date) {
+                continue;
+            }
+            user_movie["timestamp"] = new Date(timestamp * 1000);
+            new_user_movies.push(user_movie);
+        }
+        entry.movies = new_user_movies;
+        db.users.save(entry);
+    } else {
+        
+    }
+};
+> db.users.find().forEach(user_timestamp_handler);
+
+# Question 15
+var user_num_ratings_handler = function (entry) {
+    if (entry.hasOwnProperty("movies")) {
+        entry.num_ratings = entry.movies.length;
+        db.users.save(entry);
+    }
+};
+> db.users.find().forEach(user_num_ratings_handler);
+
+# Question 16
+# > db.users.find( { $where: "this.movies.length > 90" } ).count();
+> db.users.find({"num_ratings": {$gt: 90}}).count();
+3114
+
+# Question 17
+> db.users.find( { 'movies.timestamp': { $gt: new Date("Jan 1, 2001") } } ).count();
+1177
+
+# Question 18
+> db.users.find({ "name": "Jayson Brad" }, {
+    "movies": { "$slice": -5 }
+}).pretty();
+{
+	"_id" : 6016,
+	"lastFiveRatings" : [
+		{
+			"movieid" : 562,
+			"rating" : 4,
+			"timestamp" : ISODate("2000-04-26T20:22:17Z")
+		},
+		{
+			"movieid" : 1096,
+			"rating" : 4,
+			"timestamp" : ISODate("2000-04-28T21:39:34Z")
+		},
+		{
+			"movieid" : 1097,
+			"rating" : 3,
+			"timestamp" : ISODate("2000-04-26T19:12:20Z")
+		},
+		{
+			"movieid" : 2043,
+			"rating" : 2,
+			"timestamp" : ISODate("2000-04-26T19:50:58Z")
+		},
+		{
+			"movieid" : 3783,
+			"rating" : 4,
+			"timestamp" : ISODate("2000-07-14T21:34:40Z")
+		}
+	]
+}
+
+# Question 19
+> db.users.find({ "name": "Tracy Edward" }, {
+    "name": true,
+    "gender": true,
+    "age": true,
+    "occupation": true,
+    "movies": {
+        "$elemMatch": { "movieid": 1210 }
+    }
+}).pretty();
+{
+	"_id" : 5951,
+	"name" : "Tracy Edward",
+	"gender" : "M",
+	"age" : 24,
+	"occupation" : "college/grad student",
+	"RatingStarWars" : [
+		{
+			"movieid" : 1210,
+			"rating" : 5,
+			"timestamp" : ISODate("2000-05-01T05:54:36Z")
+		}
+	]
+}
+
+# Question 20
+> db.movies.find({"title": "Untouchables, The"});
+{ "_id" : 2194, "title" : "Untouchables, The", "genres" : [ "Action", "Crime", "Drama" ], "year" : 1987 }
+> db.users.find( { "movies.movieid": 2194, "movies.rating": 5 } ).count();
+1126
+
+# Question 21
+> db.users.find({ "gender": "F" }, { "name": true, "_id": false }).sort({ "movies.timestamp": -1 }).limit(10);
+{ "name" : "Lashandra Quincy" }
+{ "name" : "Lora Dewey" }
+{ "name" : "Karie Ronnie" }
+{ "name" : "Marie Erasmo" }
+{ "name" : "Flossie Aurelio" }
+{ "name" : "Jesusita Samuel" }
+{ "name" : "Linh Randal" }
+{ "name" : "Katharina Wilber" }
+{ "name" : "Babara Christopher" }
+{ "name" : "Elizbeth Arnoldo" }
+> db.users.find({ "gender": "F" }, { "name": true, "_id": false }).sort({ "movies.timestamp": -1 }).limit(10).explain();
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "movielens.users",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"gender" : {
+				"$eq" : "F"
+			}
+		},
+		"winningPlan" : {
+			"stage" : "PROJECTION",
+			"transformBy" : {
+				"name" : true,
+				"_id" : false
+			},
+			"inputStage" : {
+				"stage" : "SORT",
+				"sortPattern" : {
+					"movies.timestamp" : -1
+				},
+				"limitAmount" : 10,
+				"inputStage" : {
+					"stage" : "SORT_KEY_GENERATOR",
+					"inputStage" : {
+						"stage" : "COLLSCAN",
+						"filter" : {
+							"gender" : {
+								"$eq" : "F"
+							}
+						},
+						"direction" : "forward"
+					}
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"serverInfo" : {
+		"host" : "f2d755d42a11",
+		"port" : 27017,
+		"version" : "3.4.4",
+		"gitVersion" : "888390515874a9debd1b6c5d36559ca86b44babd"
+	},
+	"ok" : 1
+}
+
+# Question 22
+> db.users.createIndex({"gender": -1});
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+> db.users.createIndex({"movies.timestamp": -1});
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 2,
+	"numIndexesAfter" : 3,
+	"ok" : 1
+}
+
+# Question 23
+> db.users.find({ "gender": "F" }, { "name": true, "_id": false }).sort({ "movies.timestamp": -1 }).limit(10).explain();
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "movielens.users",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"gender" : {
+				"$eq" : "F"
+			}
+		},
+		"winningPlan" : {
+			"stage" : "LIMIT",
+			"limitAmount" : 10,
+			"inputStage" : {
+				"stage" : "PROJECTION",
+				"transformBy" : {
+					"name" : true,
+					"_id" : false
+				},
+				"inputStage" : {
+					"stage" : "FETCH",
+					"filter" : {
+						"gender" : {
+							"$eq" : "F"
+						}
+					},
+					"inputStage" : {
+						"stage" : "IXSCAN",
+						"keyPattern" : {
+							"movies.timestamp" : -1
+						},
+						"indexName" : "movies.timestamp_-1",
+						"isMultiKey" : true,
+						"multiKeyPaths" : {
+							"movies.timestamp" : [
+								"movies"
+							]
+						},
+						"isUnique" : false,
+						"isSparse" : false,
+						"isPartial" : false,
+						"indexVersion" : 2,
+						"direction" : "forward",
+						"indexBounds" : {
+							"movies.timestamp" : [
+								"[MaxKey, MinKey]"
+							]
+						}
+					}
+				}
+			}
+		},
+		"rejectedPlans" : [
+			{
+				"stage" : "PROJECTION",
+				"transformBy" : {
+					"name" : true,
+					"_id" : false
+				},
+				"inputStage" : {
+					"stage" : "SORT",
+					"sortPattern" : {
+						"movies.timestamp" : -1
+					},
+					"limitAmount" : 10,
+					"inputStage" : {
+						"stage" : "SORT_KEY_GENERATOR",
+						"inputStage" : {
+							"stage" : "FETCH",
+							"inputStage" : {
+								"stage" : "IXSCAN",
+								"keyPattern" : {
+									"gender" : -1
+								},
+								"indexName" : "gender_-1",
+								"isMultiKey" : false,
+								"multiKeyPaths" : {
+									"gender" : [ ]
+								},
+								"isUnique" : false,
+								"isSparse" : false,
+								"isPartial" : false,
+								"indexVersion" : 2,
+								"direction" : "forward",
+								"indexBounds" : {
+									"gender" : [
+										"[\"F\", \"F\"]"
+									]
+								}
+							}
+						}
+					}
+				}
+			}
+		]
+	},
+	"serverInfo" : {
+		"host" : "f2d755d42a11",
+		"port" : 27017,
+		"version" : "3.4.4",
+		"gitVersion" : "888390515874a9debd1b6c5d36559ca86b44babd"
+	},
+	"ok" : 1
+}
