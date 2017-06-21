@@ -1,0 +1,249 @@
+-- Import CSV File to Database
+
+USING PERIODIC COMMIT
+LOAD CSV WITH HEADERS FROM 'file:///users.csv' AS users
+CREATE (u:User {id : toInt(users.id), sex : users.sex, age : toInt(users.age), occupation : users.occupation, zip_code : users.zip_code});
+
+USING PERIODIC COMMIT
+LOAD CSV WITH HEADERS FROM 'file:///movies.csv' AS movies
+CREATE (m:Movie {id : toInt(movies.id), title : movies.title, date : toInt(movies.date)});
+
+USING PERIODIC COMMIT
+LOAD CSV WITH HEADERS FROM 'file:///genres.csv' AS genres CREATE (u:Genre {id : toInt(genres.id), name : genres.name});
+
+USING PERIODIC COMMIT
+LOAD CSV WITH HEADERS FROM 'file:///mov_genre.csv' AS mov_genre MERGE (m:Movie { id : toInt(mov_genre.mov_id) })
+MERGE (g:Genre { id : toInt(mov_genre.genre) })
+CREATE (m)-[:CATEGORIZED_AS]->(g);
+
+USING PERIODIC COMMIT
+LOAD CSV WITH HEADERS FROM 'file:///ratings.csv' AS ratings
+MERGE (u:User { id : toInt(ratings.user_id) })
+MERGE (m:Movie { id : toInt(ratings.mov_id) })
+CREATE (u)-[:RATED { note : toInt(ratings.rating), timestamp : toInt(ratings.timestamp) } ]->(m);
+
+USING PERIODIC COMMIT
+LOAD CSV WITH HEADERS FROM 'file:///friends.csv' AS friends MERGE (u1:User { id : toInt(friends.user1_id) })
+MERGE (u2:User { id : toInt(friends.user2_id) })
+CREATE (u1)-[:FRIEND_OF]->(u2);
+
+-- Question 1
+MATCH (n:User)
+RETURN COUNT(*)
+╒══════════╕
+│"COUNT(*)"│
+╞══════════╡
+│200       │
+└──────────┘
+
+-- Question 2
+MATCH (n:User)
+WHERE n.id = 1
+RETURN n.age, n.sex
+╒═══════╤═══════╕
+│"n.age"│"n.sex"│
+╞═══════╪═══════╡
+│24     │"M"    │
+└───────┴───────┘
+
+-- Question 3.1
+MATCH (n:User)
+WHERE n.sex = 'F' AND n.occupation = 'artist'
+RETURN n
+╒══════════════════════════════════════════════════════════════════════╕
+│"n"                                                                   │
+╞══════════════════════════════════════════════════════════════════════╡
+│{"occupation":"artist","sex":"F","id":23,"zip_code":"48197","age":30} │
+├──────────────────────────────────────────────────────────────────────┤
+│{"occupation":"artist","sex":"F","id":24,"zip_code":"94533","age":21} │
+├──────────────────────────────────────────────────────────────────────┤
+│{"occupation":"artist","sex":"F","id":96,"zip_code":"75206","age":25} │
+├──────────────────────────────────────────────────────────────────────┤
+│{"occupation":"artist","sex":"F","id":123,"zip_code":"20008","age":48}│
+├──────────────────────────────────────────────────────────────────────┤
+│{"occupation":"artist","sex":"F","id":150,"zip_code":"02139","age":20}│
+└──────────────────────────────────────────────────────────────────────┘
+
+-- Question 3.2
+MATCH (n:User)
+WHERE n.sex = 'F' AND (n.occupation = 'artist' OR n.occupation = 'writer')
+RETURN n
+╒══════════════════════════════════════════════════════════════════════╕
+│"n"                                                                   │
+╞══════════════════════════════════════════════════════════════════════╡
+│{"occupation":"artist","sex":"F","id":23,"zip_code":"48197","age":30} │
+├──────────────────────────────────────────────────────────────────────┤
+│{"occupation":"artist","sex":"F","id":24,"zip_code":"94533","age":21} │
+├──────────────────────────────────────────────────────────────────────┤
+│{"occupation":"artist","sex":"F","id":96,"zip_code":"75206","age":25} │
+├──────────────────────────────────────────────────────────────────────┤
+│{"occupation":"writer","sex":"F","id":122,"zip_code":"22206","age":32}│
+├──────────────────────────────────────────────────────────────────────┤
+│{"occupation":"artist","sex":"F","id":123,"zip_code":"20008","age":48}│
+├──────────────────────────────────────────────────────────────────────┤
+│{"occupation":"artist","sex":"F","id":150,"zip_code":"02139","age":20}│
+└──────────────────────────────────────────────────────────────────────┘
+
+-- Question 4
+MATCH (n:User)
+WHERE (n.occupation = 'student')
+RETURN AVG(n.age)
+╒══════════════════╕
+│"AVG(n.age)"      │
+╞══════════════════╡
+│23.193548387096776│
+└──────────────────┘
+
+-- Question 5
+MATCH (n:User)
+RETURN n.occupation, AVG(n.age)
+╒═══════════════╤══════════════════╕
+│"n.occupation" │"AVG(n.age)"      │
+╞═══════════════╪══════════════════╡
+│"scientist"    │36.55555555555556 │
+├───────────────┼──────────────────┤
+│"writer"       │29.75             │
+├───────────────┼──────────────────┤
+│"doctor"       │46                │
+├───────────────┼──────────────────┤
+│"healthcare"   │47.5              │
+├───────────────┼──────────────────┤
+│"administrator"│36.826086956521735│
+├───────────────┼──────────────────┤
+│"educator"     │43.05882352941177 │
+├───────────────┼──────────────────┤
+│"homemaker"    │31                │
+├───────────────┼──────────────────┤
+│"none"         │23                │
+├───────────────┼──────────────────┤
+│"artist"       │31.3              │
+├───────────────┼──────────────────┤
+│"salesman"     │30                │
+├───────────────┼──────────────────┤
+│"executive"    │37.888888888888886│
+├───────────────┼──────────────────┤
+│"programmer"   │34.88235294117647 │
+├───────────────┼──────────────────┤
+│"engineer"     │38.583333333333336│
+├───────────────┼──────────────────┤
+│"librarian"    │40.77777777777778 │
+├───────────────┼──────────────────┤
+│"retired"      │61                │
+├───────────────┼──────────────────┤
+│"marketing"    │39.5              │
+├───────────────┼──────────────────┤
+│"technician"   │33.5              │
+├───────────────┼──────────────────┤
+│"entertainment"│27.333333333333336│
+├───────────────┼──────────────────┤
+│"student"      │23.193548387096776│
+├───────────────┼──────────────────┤
+│"lawyer"       │40.25             │
+├───────────────┼──────────────────┤
+│"other"        │36.368421052631575│
+└───────────────┴──────────────────┘
+
+-- Question 6.1
+MATCH (n:User)
+RETURN n.occupation, COUNT(*)
+╒═══════════════╤══════════╕
+│"n.occupation" │"COUNT(*)"│
+╞═══════════════╪══════════╡
+│"scientist"    │9         │
+├───────────────┼──────────┤
+│"writer"       │8         │
+├───────────────┼──────────┤
+│"doctor"       │1         │
+├───────────────┼──────────┤
+│"healthcare"   │4         │
+├───────────────┼──────────┤
+│"administrator"│23        │
+├───────────────┼──────────┤
+│"educator"     │17        │
+├───────────────┼──────────┤
+│"homemaker"    │2         │
+├───────────────┼──────────┤
+│"none"         │3         │
+├───────────────┼──────────┤
+│"artist"       │10        │
+├───────────────┼──────────┤
+│"salesman"     │1         │
+├───────────────┼──────────┤
+│"executive"    │9         │
+├───────────────┼──────────┤
+│"programmer"   │17        │
+├───────────────┼──────────┤
+│"engineer"     │12        │
+├───────────────┼──────────┤
+│"librarian"    │9         │
+├───────────────┼──────────┤
+│"retired"      │1         │
+├───────────────┼──────────┤
+│"marketing"    │8         │
+├───────────────┼──────────┤
+│"technician"   │6         │
+├───────────────┼──────────┤
+│"entertainment"│6         │
+├───────────────┼──────────┤
+│"student"      │31        │
+├───────────────┼──────────┤
+│"lawyer"       │4         │
+├───────────────┼──────────┤
+│"other"        │19        │
+└───────────────┴──────────┘
+
+-- Question 6.2
+MATCH (n:User)
+RETURN n.occupation, COUNT(*) AS count_by_occupation
+ORDER BY count_by_occupation DESC
+LIMIT 5
+╒═══════════════╤═════════════════════╕
+│"n.occupation" │"count_by_occupation"│
+╞═══════════════╪═════════════════════╡
+│"student"      │31                   │
+├───────────────┼─────────────────────┤
+│"administrator"│23                   │
+├───────────────┼─────────────────────┤
+│"other"        │19                   │
+├───────────────┼─────────────────────┤
+│"educator"     │17                   │
+├───────────────┼─────────────────────┤
+│"programmer"   │17                   │
+└───────────────┴─────────────────────┘
+
+-- Question 7
+MATCH (n:User)
+RETURN COUNT(DISTINCT n.occupation)
+╒══════════════════════════════╕
+│"COUNT(DISTINCT n.occupation)"│
+╞══════════════════════════════╡
+│21                            │
+└──────────────────────────────┘
+
+-- Question 8
+MATCH (u:User)-[r]->(m:Movie)
+WHERE r.note = 5
+RETURN COUNT(*)
+╒══════════╕
+│"COUNT(*)"│
+╞══════════╡
+│3042      │
+└──────────┘
+
+
+-- Question 9
+
+
+
+-- Question 10
+
+
+
+-- Question 11
+
+
+
+-- Question 12
+
+
+
