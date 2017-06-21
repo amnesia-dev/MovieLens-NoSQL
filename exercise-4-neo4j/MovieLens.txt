@@ -232,18 +232,102 @@ RETURN COUNT(*)
 
 
 -- Question 9
-
-
+MATCH p=allShortestPaths((u1:User)-[:FRIEND_OF*1..6]->(u2:User))
+WHERE u1.id = 1 AND u2.id <> 1
+RETURN DISTINCT (u2.id)
 
 -- Question 10
-
-
+MATCH p=allShortestPaths((u1:User)-[:FRIEND_OF*1..6]->(u2:User))
+WHERE u1.id = 1 AND u2.id <> 1
+RETURN DISTINCT (u2.id), LENGTH(p) AS separation_degree
+ORDER BY separation_degree ASC
 
 -- Question 11
-
-
+MATCH p=(u1:User)-[:FRIEND_OF]->(common_friend:User)-[:FRIEND_OF]->(u2:User)
+WHERE u1.id = 1 AND u2.id <> u1.id
+RETURN u1.id, u2.id, COUNT(common_friend) AS count_common_friend
+ORDER BY count_common_friend DESC
+LIMIT 1
 
 -- Question 12
+MATCH p=(u1:User)-[:FRIEND_OF]->(common_friend:User)-[:FRIEND_OF]->(u2:User)
+WHERE u1.id = 1 AND u2.id <> u1.id AND NOT ((u1:User)-[:FRIEND_OF]->(u2:User))
+RETURN u1.id, u2.id, COUNT(common_friend) AS count_common_friend
+ORDER BY count_common_friend DESC
+LIMIT 1
 
+-- Question 13
+MATCH p=(u1:User)-[:RATED]->(common_movie:Movie)<-[:RATED]-(u2:User)
+WHERE u1.id = 1 AND u2.id <> u1.id
+RETURN u1.id, u2.id, COUNT(common_movie) AS count_common_movie
+ORDER BY count_common_movie DESC
+LIMIT 1
+╒═══════╤═══════╤════════════════════╕
+│"u1.id"│"u2.id"│"count_common_movie"│
+╞═══════╪═══════╪════════════════════╡
+│1      │13     │174                 │
+└───────┴───────┴────────────────────┘
 
+-- Question 14
+MATCH (u1:User)-[:FRIEND_OF]->(friend),
+      (friend)-[r:RATED]->(m1:Movie)
+WHERE u1.id = 1 AND NOT ((u1)-[:RATED]->(m1))
+RETURN m1.title, SUM(r.note) AS sum_rating, COUNT(*) AS occurrence
+ORDER BY sum_rating DESC, occurrence DESC
+LIMIT 10
+╒══════════════════════════╤════════════╤════════════╕
+│"m1.title"                │"sum_rating"│"occurrence"│
+╞══════════════════════════╪════════════╪════════════╡
+│"English Patient (1996)"  │9           │2           │
+├──────────────────────────┼────────────┼────────────┤
+│"Ulee's Gold (1997)"      │8           │2           │
+├──────────────────────────┼────────────┼────────────┤
+│"Face/Off (1997)"         │8           │2           │
+├──────────────────────────┼────────────┼────────────┤
+│"Titanic (1997)"          │7           │2           │
+├──────────────────────────┼────────────┼────────────┤
+│"Liar Liar (1997)"        │6           │2           │
+├──────────────────────────┼────────────┼────────────┤
+│"Evita (1996)"            │5           │1           │
+├──────────────────────────┼────────────┼────────────┤
+│"Apt Pupil (1998)"        │5           │1           │
+├──────────────────────────┼────────────┼────────────┤
+│"Jackie Brown (1997)"     │5           │1           │
+├──────────────────────────┼────────────┼────────────┤
+│"Leaving Las Vegas (1995)"│5           │1           │
+├──────────────────────────┼────────────┼────────────┤
+│"Schindler's List (1993)" │5           │1           │
+└──────────────────────────┴────────────┴────────────┘
+
+-- Question 15
+MATCH (u1:User)-[r:RATED]->(m1:Movie),
+      (m1)-[c1:CATEGORIZED_AS]->(g1:Genre),
+      (m2:Movie)-[c2:CATEGORIZED_AS]->(g1:Genre)
+WHERE u1.id = 1 AND NOT ((u1)-[:RATED]->(m2))
+RETURN m2.title, SUM(r.note) AS sum_rating, COUNT(*) AS occurrence
+ORDER BY sum_rating DESC, occurrence DESC
+LIMIT 10
+╒═════════════════════════════════════════════════════╤════════════╤════════════╕
+│"m2.title"                                           │"sum_rating"│"occurrence"│
+╞═════════════════════════════════════════════════════╪════════════╪════════════╡
+│"Desperate Measures (1998)"                          │1388        │368         │
+├─────────────────────────────────────────────────────┼────────────┼────────────┤
+│"House of Yes (1997)"                                │924         │250         │
+├─────────────────────────────────────────────────────┼────────────┼────────────┤
+│"True Lies (1994)"                                   │862         │252         │
+├─────────────────────────────────────────────────────┼────────────┼────────────┤
+│"Titanic (1997)"                                     │843         │226         │
+├─────────────────────────────────────────────────────┼────────────┼────────────┤
+│"Midnight in the Garden of Good and Evil (1997)"     │840         │228         │
+├─────────────────────────────────────────────────────┼────────────┼────────────┤
+│"Ulee's Gold (1997)"                                 │840         │214         │
+├─────────────────────────────────────────────────────┼────────────┼────────────┤
+│"Wings of the Dove (1997)"                           │781         │203         │
+├─────────────────────────────────────────────────────┼────────────┼────────────┤
+│"G.I. Jane (1997)"                                   │762         │207         │
+├─────────────────────────────────────────────────────┼────────────┼────────────┤
+│"Wag the Dog (1997)"                                 │736         │198         │
+├─────────────────────────────────────────────────────┼────────────┼────────────┤
+│"Adventures of Priscilla, Queen of the Desert (1994)"│736         │198         │
+└─────────────────────────────────────────────────────┴────────────┴────────────┘
 
